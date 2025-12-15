@@ -81,7 +81,7 @@ describe("AuctionDanishEngine", function () {
                 await expect(
                    auct.connect(buyer).
                     buy(0, {value: ethers.parseEther("0.0001")}) 
-                ).to.be.revertedWith('stopped!');
+                ).to.be.revertedWithCustomError(auct, 'AuctionStopped');
             })
         })
     })

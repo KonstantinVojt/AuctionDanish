@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./IAuctionDanishEngine";
+import "./IAuctionDanishEngine.sol";
 
 contract AuctionDanishEngine is IAuctionDanishEngine, Ownable {
 
