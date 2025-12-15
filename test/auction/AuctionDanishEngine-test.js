@@ -1,7 +1,7 @@
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
 
-describe("AucEngine", function () {
+describe("AuctionDanishEngine", function () {
     let owner
     let seller
     let buyer
@@ -10,8 +10,8 @@ describe("AucEngine", function () {
     this.beforeEach(async function () {
         [owner, seller, buyer] = await ethers.getSigners()
 
-        const AucEngine = await ethers.getContractFactory("AucEngine", owner)
-        auct = await AucEngine.deploy()
+        const AuctionDanishEngine = await ethers.getContractFactory("AuctionDanishEngine", owner)
+        auct = await AuctionDanishEngine.deploy()
         await auct.waitForDeployment()
     })
 
