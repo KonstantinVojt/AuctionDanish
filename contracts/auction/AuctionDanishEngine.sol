@@ -18,12 +18,6 @@ contract AuctionDanishEngine is IAuctionDanishEngine, Ownable {
     error AuctionAlreadyEnded();
     error NotEnoughFunds();
 
-    function _requireNotStopped(Auction storage auction) internal view {
-        if (auction.stopped) {
-            revert AuctionStopped();
-        }
-    }
-
     function createAuction(uint256 _startingPrice, uint256 _discountRate, string calldata _item, uint256 _duration) external {
         uint256 duration = _duration == 0 ? DURATION : _duration;
         if (_startingPrice < _discountRate * duration) {
@@ -45,18 +39,6 @@ contract AuctionDanishEngine is IAuctionDanishEngine, Ownable {
         emit AuctionCreated(auctions.length - 1, _item, _startingPrice, duration);
     }
 
-    function getPriceFor(uint256 index) public view returns(uint256) {
-        Auction storage cAuction = auctions[index];
-        _requireNotStopped(cAuction);
-        uint256 elapsed = block.timestamp - cAuction.startAt;
-        uint256 discount = cAuction.discountRate * elapsed;
-        return cAuction.startingPrice - discount;
-    }
-
-    // function stop(uint index) {
-    //     Auction storage cAuction = auctions[index];
-    //     cAuction.stopped = true;
-    // }
 
     function buy(uint256 index) external payable {
         Auction storage cAuction = auctions[index];
@@ -82,4 +64,19 @@ contract AuctionDanishEngine is IAuctionDanishEngine, Ownable {
         // 500 - ((500 * 10) / 100) = 500 - 50 = 450
         emit AuctionEnded(index, cPrice, msg.sender);
     }
+
+    function getPriceFor(uint256 index) public view returns(uint256) {
+        Auction storage cAuction = auctions[index];
+        _requireNotStopped(cAuction);
+        uint256 elapsed = block.timestamp - cAuction.startAt;
+        uint256 discount = cAuction.discountRate * elapsed;
+        return cAuction.startingPrice - discount;
+    }
+
+    function _requireNotStopped(Auction storage auction) internal view {
+        if (auction.stopped) {
+            revert AuctionStopped();
+        }
+    }
+
 }
