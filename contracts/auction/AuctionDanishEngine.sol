@@ -18,28 +18,6 @@ contract AuctionDanishEngine is IAuctionDanishEngine, Ownable {
     error AuctionAlreadyEnded();
     error NotEnoughFunds();
 
-    function createAuction(uint256 _startingPrice, uint256 _discountRate, string calldata _item, uint256 _duration) external {
-        uint256 duration = _duration == 0 ? DURATION : _duration;
-        if (_startingPrice < _discountRate * duration) {
-            revert IncorrectStartingPrice();
-        }
-        Auction memory newAuction = Auction({
-            seller: payable(msg.sender),
-            startingPrice: _startingPrice,
-            finalPrice: _startingPrice,
-            discountRate: _discountRate,
-            startAt: block.timestamp,
-            endsAt: block.timestamp + duration,
-            item: _item,
-            stopped: false
-        });
-        
-        auctions.push(newAuction);
-
-        emit AuctionCreated(auctions.length - 1, _item, _startingPrice, duration);
-    }
-
-
     function buy(uint256 index) external payable {
         Auction storage cAuction = auctions[index];
         _requireNotStopped(cAuction);
@@ -63,6 +41,27 @@ contract AuctionDanishEngine is IAuctionDanishEngine, Ownable {
         ); // 500
         // 500 - ((500 * 10) / 100) = 500 - 50 = 450
         emit AuctionEnded(index, cPrice, msg.sender);
+    }
+
+    function createAuction(uint256 _startingPrice, uint256 _discountRate, string calldata _item, uint256 _duration) external {
+        uint256 duration = _duration == 0 ? DURATION : _duration;
+        if (_startingPrice < _discountRate * duration) {
+            revert IncorrectStartingPrice();
+        }
+        Auction memory newAuction = Auction({
+            seller: payable(msg.sender),
+            startingPrice: _startingPrice,
+            finalPrice: _startingPrice,
+            discountRate: _discountRate,
+            startAt: block.timestamp,
+            endsAt: block.timestamp + duration,
+            item: _item,
+            stopped: false
+        });
+        
+        auctions.push(newAuction);
+
+        emit AuctionCreated(auctions.length - 1, _item, _startingPrice, duration);
     }
 
     function getPriceFor(uint256 index) public view returns(uint256) {
