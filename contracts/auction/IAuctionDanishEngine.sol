@@ -14,7 +14,8 @@ interface IAuctionDanishEngine {
         bool stopped;
     }
 
-    event AuctionCreated(uint index, string item, uint256 startingPrice, uint256 duration);
-    event AuctionEnded(uint index, uint256 finalPrice, address winner);
+    event AuctionCreated(uint256 index, string item, uint256 startingPrice, uint256 duration);
+    event AuctionEnded(uint256 index, uint256 finalPrice, address winner);
+
 
 }
