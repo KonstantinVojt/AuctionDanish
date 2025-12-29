@@ -58,10 +58,10 @@ describe("AuctionDanishEngine", function () {
         it("reverts if starting price too low for discount rate", async function () {
             await expect(
                 auct.connect(seller).createAuction(
-                    ethers.parseEther("1"), // startingPrice
-                    ethers.parseEther("0.02"), // discountRate
+                    ethers.parseEther("1"),
+                    ethers.parseEther("0.02"),
                     "item",
-                    100 // duration
+                    100
                 )
             ).to.be.revertedWithCustomError(auct, "IncorrectStartingPrice");
         });
@@ -69,7 +69,7 @@ describe("AuctionDanishEngine", function () {
         it("reverts if starting price below minimum", async function () {
             await expect(
                 auct.connect(seller).createAuction(
-                    ethers.parseEther("0.000001"), // меньше min
+                    ethers.parseEther("0.000001"),
                     0,
                     "item",
                     100
@@ -80,7 +80,7 @@ describe("AuctionDanishEngine", function () {
         it("reverts if starting price above maximum", async function () {
             await expect(
                 auct.connect(seller).createAuction(
-                    ethers.parseEther("1000"), // больше max
+                    ethers.parseEther("1000"),
                     0,
                     "item",
                     100
@@ -93,7 +93,7 @@ describe("AuctionDanishEngine", function () {
                 ethers.parseEther("0.01"),
                 0,
                 "item",
-                0 // ← ВАЖНО
+                0
             );
         
             const ts = (await ethers.provider.getBlock(tx.blockNumber)).timestamp;
@@ -143,10 +143,9 @@ describe("AuctionDanishEngine", function () {
                     ethers.parseEther("0.01"),
                     0,
                     "item",
-                    1 // 1 second duration
+                    1
                 );
             
-                // перематываем время
                 await ethers.provider.send("evm_increaseTime", [2]);
                 await ethers.provider.send("evm_mine");
             
@@ -232,13 +231,12 @@ describe("AuctionDanishEngine", function () {
                 ethers.parseEther("0.01"),
                 0,
                 "item",
-                10 // 10 секунд
+                10
             );
         
             const auction = await auct.auctions(0);
             console.log("endsAt:", auction.endsAt.toString());
         
-            // устанавливаем следующий блок прямо после окончания аукциона
             await ethers.provider.send("evm_setNextBlockTimestamp", [Number(auction.endsAt) + 1]);
             await ethers.provider.send("evm_mine");
         
@@ -289,20 +287,15 @@ describe("AuctionDanishEngine", function () {
         })
 
         it("reverts if transfer fails (success == false)", async function () {
-            // Деплой mock-контракта, который всегда revert при получении ETH
             const RevertingReceiver = await ethers.getContractFactory("RevertingReceiver");
             const receiver = await RevertingReceiver.deploy();
             await receiver.waitForDeployment();
         
-            // НЕ вызываем buy снова! Используем комиссию из beforeEach
-        
-            // Передаём ownership контракту, который не принимает ETH
             await auct.transferOwnership(receiver.target);
         
-            // Проверяем, что withdrawFees revert из-за failure
             await expect(
                 receiver.withdraw(auct.target)
-            ).to.be.reverted; // revert из-за require(success)
+            ).to.be.reverted;
         });
     })
 
