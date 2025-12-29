@@ -54,6 +54,7 @@ describe("AuctionDanishEngine", function () {
             console.log(cAuction)
         })
 
+
         it("reverts if starting price too low for discount rate", async function () {
             await expect(
                 auct.connect(seller).createAuction(
@@ -85,6 +86,20 @@ describe("AuctionDanishEngine", function () {
                     100
                 )
             ).to.be.revertedWithCustomError(auct, "StartingPriceOutOfRange");
+        });
+
+        it("uses default duration when duration is zero", async function () {
+            const tx = await auct.connect(seller).createAuction(
+                ethers.parseEther("0.01"),
+                0,
+                "item",
+                0 // ← ВАЖНО
+            );
+        
+            const ts = (await ethers.provider.getBlock(tx.blockNumber)).timestamp;
+            const auction = await auct.auctions(0);
+        
+            expect(auction.endsAt).to.eq(ts + 2 * 24 * 60 * 60);
         });
 
         describe("buy", function () {
@@ -156,6 +171,24 @@ describe("AuctionDanishEngine", function () {
                     })
                 ).to.be.revertedWithCustomError(auct, "NotEnoughFunds");
             });
+
+            it("refunds excess ETH to buyer", async function () {
+                await auct.connect(seller).createAuction(
+                    ethers.parseEther("1"),
+                    0,
+                    "item",
+                    100
+                );
+            
+                await expect(() =>
+                    auct.connect(buyer).buy(0, {
+                        value: ethers.parseEther("2")
+                    })
+                ).to.changeEtherBalance(
+                    buyer,
+                    ethers.parseEther("-1")
+                );
+            });
         })
     })
 
@@ -193,6 +226,29 @@ describe("AuctionDanishEngine", function () {
                 auct.connect(seller).cancelAuction(0)
             ).to.be.revertedWithCustomError(auct, "AuctionStopped")
         })
+
+        it("reverts if auction already ended", async function () {
+            const tx = await auct.connect(seller).createAuction(
+                ethers.parseEther("0.01"),
+                0,
+                "item",
+                10 // 10 секунд
+            );
+        
+            const auction = await auct.auctions(0);
+            console.log("endsAt:", auction.endsAt.toString());
+        
+            // устанавливаем следующий блок прямо после окончания аукциона
+            await ethers.provider.send("evm_setNextBlockTimestamp", [Number(auction.endsAt) + 1]);
+            await ethers.provider.send("evm_mine");
+        
+            await expect(
+                auct.connect(seller).cancelAuction(0)
+            ).to.be.revertedWithCustomError(auct, "AuctionAlreadyEnded");
+        });
+
+
+
     })
 
     describe("withdrawFees", function () {
@@ -231,6 +287,44 @@ describe("AuctionDanishEngine", function () {
                 auct.connect(buyer).withdrawFees()
             ).to.be.reverted
         })
+
+        it("reverts if transfer fails (success == false)", async function () {
+            // Деплой mock-контракта, который всегда revert при получении ETH
+            const RevertingReceiver = await ethers.getContractFactory("RevertingReceiver");
+            const receiver = await RevertingReceiver.deploy();
+            await receiver.waitForDeployment();
+        
+            // НЕ вызываем buy снова! Используем комиссию из beforeEach
+        
+            // Передаём ownership контракту, который не принимает ETH
+            await auct.transferOwnership(receiver.target);
+        
+            // Проверяем, что withdrawFees revert из-за failure
+            await expect(
+                receiver.withdraw(auct.target)
+            ).to.be.reverted; // revert из-за require(success)
+        });
+    })
+
+    describe("setStartingPriceLimits", function () {
+
+        it("reverts if not owner", async function () {
+            await expect(
+                auct.connect(buyer).setStartingPriceLimits(
+                    ethers.parseEther("0.1"),
+                    ethers.parseEther("1")
+                )
+            ).to.be.reverted;
+        });
+
+        it("reverts if min > max", async function () {
+            await expect(
+                auct.setStartingPriceLimits(
+                    ethers.parseEther("1"),
+                    ethers.parseEther("0.1")
+                )
+            ).to.be.revertedWithCustomError(auct, "InvalidPriceLimits")
+        })
     })
 
     describe("pause / unpause", function () {
@@ -250,6 +344,33 @@ describe("AuctionDanishEngine", function () {
             ).to.be.reverted
         })
 
+        it("reverts createAuction when paused", async function () {
+            await auct.pause();
+
+            await expect(
+                auct.connect(seller).createAuction(
+                    ethers.parseEther("0.01"),
+                    1,
+                    "item",
+                    100
+                )
+            ).to.be.reverted;
+        });
+
+        it("owner can pause", async function () {
+            await expect(
+                auct.pause()
+            ).to.not.be.reverted;
+        });
+    
+        it("owner can unpause", async function () {
+            await auct.pause();
+        
+            await expect(
+                auct.unpause()
+            ).to.not.be.reverted;
+        });
+
         it("allows actions after unpause", async function () {
             await auct.pause()
             await auct.unpause()
@@ -263,6 +384,18 @@ describe("AuctionDanishEngine", function () {
                 )
             ).to.not.be.reverted
         })
+
+        it("reverts pause if not owner", async function () {
+            await expect(
+                auct.connect(buyer).pause()
+            ).to.be.reverted;
+        });
+
+        it("reverts unpause if not owner", async function () {
+            await expect(
+                auct.connect(buyer).unpause()
+            ).to.be.reverted;
+        });
     })
 
     describe("getPriceFor", function () {
