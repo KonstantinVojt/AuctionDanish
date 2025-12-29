@@ -54,6 +54,39 @@ describe("AuctionDanishEngine", function () {
             console.log(cAuction)
         })
 
+        it("reverts if starting price too low for discount rate", async function () {
+            await expect(
+                auct.connect(seller).createAuction(
+                    ethers.parseEther("1"), // startingPrice
+                    ethers.parseEther("0.02"), // discountRate
+                    "item",
+                    100 // duration
+                )
+            ).to.be.revertedWithCustomError(auct, "IncorrectStartingPrice");
+        });
+
+        it("reverts if starting price below minimum", async function () {
+            await expect(
+                auct.connect(seller).createAuction(
+                    ethers.parseEther("0.000001"), // меньше min
+                    0,
+                    "item",
+                    100
+                )
+            ).to.be.revertedWithCustomError(auct, "StartingPriceOutOfRange");
+        });
+
+        it("reverts if starting price above maximum", async function () {
+            await expect(
+                auct.connect(seller).createAuction(
+                    ethers.parseEther("1000"), // больше max
+                    0,
+                    "item",
+                    100
+                )
+            ).to.be.revertedWithCustomError(auct, "StartingPriceOutOfRange");
+        });
+
         describe("buy", function () {
             it("allows to buy", async function () {
                 await auct.connect(seller).createAuction(
@@ -89,6 +122,40 @@ describe("AuctionDanishEngine", function () {
                     buy(0, {value: ethers.parseEther("0.0001")}) 
                 ).to.be.revertedWithCustomError(auct, 'AuctionStopped');
             })
+
+            it("reverts if auction already ended", async function () {
+                await auct.connect(seller).createAuction(
+                    ethers.parseEther("0.01"),
+                    0,
+                    "item",
+                    1 // 1 second duration
+                );
+            
+                // перематываем время
+                await ethers.provider.send("evm_increaseTime", [2]);
+                await ethers.provider.send("evm_mine");
+            
+                await expect(
+                    auct.connect(buyer).buy(0, {
+                        value: ethers.parseEther("0.01")
+                    })
+                ).to.be.revertedWithCustomError(auct, "AuctionAlreadyEnded");
+            });
+
+            it("reverts if not enough funds sent", async function () {
+                await auct.connect(seller).createAuction(
+                    ethers.parseEther("1"),
+                    0,
+                    "item",
+                    100
+                );
+            
+                await expect(
+                    auct.connect(buyer).buy(0, {
+                        value: ethers.parseEther("0.5")
+                    })
+                ).to.be.revertedWithCustomError(auct, "NotEnoughFunds");
+            });
         })
     })
 
