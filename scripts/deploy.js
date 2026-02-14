@@ -1,20 +1,21 @@
-const hre = require('hardhat')
-const ethers = hre.ethers
+const hre = require("hardhat");
 
 async function main() {
-    const [signer] = await ethers.getSigners()
+  const AuctionDanishEngine = await hre.ethers.getContractFactory(
+    "AuctionDanishEngine"
+  );
 
-    const Erc = await ethers.getContractFactory('MShop', signer)
-    const erc = await Erc.deploy()
-    const ercAddress = await erc.getAddress()
-    await erc.waitForDeployment()
-    console.log(ercAddress)
-    console.log(await erc.token())
+  const auction = await AuctionDanishEngine.deploy();
+
+  await auction.waitForDeployment();
+
+  console.log(
+    "AuctionDanishEngine deployed to:",
+    await auction.getAddress()
+  );
 }
 
-main()
-    .then(() => process.exit(0))
-    .catch((error) => {
-        console.error(error);
-        process.exit(1);
-    });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -9,7 +9,6 @@ contract RevertingReceiver {
         AuctionDanishEngine(auction).withdrawFees();
     }
 
-    // Любой входящий ETH вызывает revert
     receive() external payable {
         revert("I refuse ETH");
     }
